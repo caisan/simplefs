@@ -18,6 +18,10 @@
 #include <linux/jbd2.h>
 #include <linux/parser.h>
 #include <linux/blkdev.h>
+#include <linux/uio.h>
+#include <linux/pagevec.h>
+#include <linux/mount.h>
+#include <linux/path.h>
 
 #include "super.h"
 
@@ -356,38 +360,40 @@ int simplefs_inode_save(struct super_block *sb, struct simplefs_inode *sfs_inode
 
 /* FIXME: The write support is rudimentary. I have not figured out a way to do writes
  * from particular offsets (even though I have written some untested code for this below) efficiently. */
-ssize_t simplefs_write(struct file * filp, const char __user * buf, size_t len,
-		       loff_t * ppos)
+ssize_t simplefs_write(struct kiocb * iocb, struct iov_iter *from)
 {
 	/* After the commit dd37978c5 in the upstream linux kernel,
 	 * we can use just filp->f_inode instead of the
 	 * f->f_path.dentry->d_inode redirection */
-	struct inode *inode;
+	struct inode *inode = file_inode(iocb->ki_filp);
 	struct simplefs_inode *sfs_inode;
 	struct buffer_head *bh;
 	struct super_block *sb;
+        //struct file *file = iocb->ki_filp;
 	struct simplefs_super_block *sfs_sb;
 	handle_t *handle;
+	size_t len ;
+        const char __user * buf;
+        loff_t *ppos;
 
 	char *buffer;
 
 	int retval;
 
-	sb = filp->f_path.dentry->d_inode->i_sb;
+        ppos = &(iocb->ki_pos);
+	sb = inode->i_sb;
 	sfs_sb = SIMPLEFS_SB(sb);
 
 	handle = jbd2_journal_start(sfs_sb->journal, 1);
 	if (IS_ERR(handle))
 		return PTR_ERR(handle);
-	retval = generic_write_checks(filp, ppos, &len, 0);
+	retval = generic_write_checks(iocb, from);
 	if (retval)
 		return retval;
 
-	inode = filp->f_path.dentry->d_inode;
 	sfs_inode = SIMPLEFS_INODE(inode);
 
-	bh = sb_bread(filp->f_path.dentry->d_inode->i_sb,
-					    sfs_inode->data_block_number);
+	bh = sb_bread(inode->i_sb, sfs_inode->data_block_number);
 
 	if (!bh) {
 		printk(KERN_ERR "Reading the block number [%llu] failed.",
@@ -405,7 +411,8 @@ ssize_t simplefs_write(struct file * filp, const char __user * buf, size_t len,
 		sfs_trace("Can't get write access for bh\n");
 		return retval;
 	}
-
+        len = from->count;
+        buf = from->iov->iov_base;
 	if (copy_from_user(buffer, buf, len)) {
 		brelse(bh);
 		printk(KERN_ERR
@@ -452,7 +459,8 @@ ssize_t simplefs_write(struct file * filp, const char __user * buf, size_t len,
 
 const struct file_operations simplefs_file_operations = {
 	.read = simplefs_read,
-	.write = simplefs_write,
+	//.write = simplefs_write,
+        .write_iter = simplefs_write,
 };
 
 const struct file_operations simplefs_dir_operations = {
