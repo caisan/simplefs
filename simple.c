@@ -875,6 +875,7 @@ int simplefs_fill_super(struct super_block *sb, void *data, int silent)
 
 	sb->s_maxbytes = SIMPLEFS_DEFAULT_BLOCK_SIZE;
 	sb->s_op = &simplefs_sops;
+        printk(KERN_INFO "simplefs setup superblock data struct:sb\n");
 
 	root_inode = new_inode(sb);
 	root_inode->i_ino = SIMPLEFS_ROOTDIR_INODE_NUMBER;
@@ -887,12 +888,13 @@ int simplefs_fill_super(struct super_block *sb, void *data, int silent)
 
 	root_inode->i_private =
 	    simplefs_get_inode(sb, SIMPLEFS_ROOTDIR_INODE_NUMBER);
-
+	printk(KERN_INFO "simplefs fill root inode\n");
 	/* TODO: move such stuff into separate header. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0)
 	sb->s_root = d_make_root(root_inode);
 #else
 	sb->s_root = d_alloc_root(root_inode);
+        printk(KERN_INFO "simplefs super block get root inode\n");
 	if (!sb->s_root)
 		iput(root_inode);
 #endif
@@ -904,18 +906,20 @@ int simplefs_fill_super(struct super_block *sb, void *data, int silent)
 
 	if ((ret = simplefs_parse_options(sb, data)))
 		goto release;
-
+        /*
 	if (!sb_disk->journal) {
 		struct inode *journal_inode;
 		journal_inode = simplefs_iget(sb, SIMPLEFS_JOURNAL_INODE_NUMBER);
 
 		ret = simplefs_sb_load_journal(sb, journal_inode);
+                printk(KERN_INFO "simplefs does support journal\n");
 		goto release;
 	}
+        printk(KERN_INFO "simplefs load super block journal\n");
 	ret = jbd2_journal_load(sb_disk->journal);
-
+	*/
 release:
-	brelse(bh);
+//	brelse(bh);
 
 	return ret;
 }
