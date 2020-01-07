@@ -896,7 +896,7 @@ int simplefs_fill_super(struct super_block *sb, void *data, int silent)
 
 	if ((ret = simplefs_parse_options(sb, data)))
 		goto release;
-
+	/*
 	if (!sb_disk->journal) {
 		struct inode *journal_inode;
 		journal_inode = simplefs_iget(sb, SIMPLEFS_JOURNAL_INODE_NUMBER);
@@ -905,9 +905,9 @@ int simplefs_fill_super(struct super_block *sb, void *data, int silent)
 		goto release;
 	}
 	ret = jbd2_journal_load(sb_disk->journal);
-
+	*/
 release:
-	brelse(bh);
+	//brelse(bh);
 
 	return ret;
 }
