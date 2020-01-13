@@ -660,6 +660,7 @@ struct dentry *simplefs_lookup(struct inode *parent_inode,
 	struct simplefs_inode *parent = SIMPLEFS_INODE(parent_inode);
 	struct super_block *sb = parent_inode->i_sb;
 	struct buffer_head *bh;
+        struct buffer_head *data_bh;
 	struct simplefs_dir_record *record;
 	int i;
 
@@ -681,6 +682,11 @@ struct dentry *simplefs_lookup(struct inode *parent_inode,
 			 * will use an invalid uninitialized inode */
 
 			struct inode *inode = simplefs_iget(sb, record->inode_no);
+                        struct simplefs_inode *welcome_inode = SIMPLEFS_INODE(inode);
+			sfs_trace("welcome inode: ino=%llu, b=%llu\n",
+				              welcome_inode->inode_no, welcome_inode->data_block_number);
+			data_bh = sb_bread(sb, welcome_inode->data_block_number);
+			sfs_trace("welcome Info:%s \n",data_bh->b_data);
 			inode_init_owner(inode, parent_inode, SIMPLEFS_INODE(inode)->mode);
 			d_add(child_dentry, inode);
 			return NULL;
